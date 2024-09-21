@@ -2,6 +2,7 @@
 using HotelListing.API.Models.Users;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq.Expressions;
 
 namespace HotelListing.API.Controllers
 {
@@ -10,10 +11,12 @@ namespace HotelListing.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IAuthManager _authManager;
+        private readonly ILogger<AccountController> _logger;
 
-        public AccountController(IAuthManager authManager)
+        public AccountController(IAuthManager authManager, ILogger<AccountController> logger)
         {
             this._authManager = authManager;
+            this._logger = logger;
         }
 
         // POST: api/Account/register
@@ -24,19 +27,30 @@ namespace HotelListing.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Register([FromBody] ApiUserDto apiUserDto)
         {
-            var errors = await _authManager.Register(apiUserDto);
-
-            if (errors.Any())
+            _logger.LogInformation($"Registration Attempt for {apiUserDto.Email}");
+            try
             {
-                foreach (var error in errors)
-                {
-                    ModelState.AddModelError(error.Code, error.Description);
-                }
-                return BadRequest(ModelState);
-            }
+                var errors = await _authManager.Register(apiUserDto);
 
-            return Ok(apiUserDto);
+                if (errors.Any())
+                {
+                    foreach (var error in errors)
+                    {
+                        ModelState.AddModelError(error.Code, error.Description);
+                    }
+                    return BadRequest(ModelState);
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Something went wrong in the {nameof(Register)}  -User Registration attempt for {apiUserDto.Email}");
+                return Problem($"Something went wrong in the {nameof(Register)}. Please contact support.", statusCode: 500);
+            }
         }
+        
+
         // POST: api/Account/login
         [HttpPost]
         [Route("login")]
@@ -45,16 +59,27 @@ namespace HotelListing.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Login([FromBody] LoginDto loginDto)
         {
-            var authResponse = await _authManager.Login(loginDto);
-
-            if (authResponse == null)
+            _logger.LogInformation($"Login Attempt for {loginDto.Email}");
+            try
             {
-                return Unauthorized();
-            }
+                var authResponse = await _authManager.Login(loginDto);
 
-            return Ok(authResponse);
+                if (authResponse == null)
+                {
+                    return Unauthorized();
+                }
+
+                return Ok(authResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Something went wrong in the {nameof(Login)}  -User Registration attempt for {loginDto.Email}");
+                return Problem($"Something went wrong in the {nameof(Login)}. Please contact support.", statusCode: 500);
+            }
+            
         }
 
+        // POST: api/Account/refreshtoken
         [HttpPost]
         [Route("refreshtoken")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

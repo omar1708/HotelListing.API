@@ -9,11 +9,13 @@ using HotelListing.API.Data;
 using HotelListing.API.Contracts;
 using AutoMapper;
 using HotelListing.API.Models.Hotel;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HotelListing.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class HotelsController : ControllerBase
     {
         private readonly IHotelsRepository _hotelsRepository;
@@ -30,8 +32,7 @@ namespace HotelListing.API.Controllers
         public async Task<ActionResult<IEnumerable<HotelDto>>> GetHotels()
         {
             var hotels = await _hotelsRepository.GetAllAsync();
-            var records = _mapper.Map<List<HotelDto>>(hotels);
-            return Ok(records);
+            return Ok(_mapper.Map<List<HotelDto>>(hotels));
         }
 
         // GET: api/Hotels/5
